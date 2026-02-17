@@ -34,7 +34,9 @@ enable_language(C ASM)
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME}
         Drivers/RotaryEncoder/rotary_encoder.c
-        Drivers/RotaryEncoder/rotary_encoder.h)
+        Drivers/RotaryEncoder/rotary_encoder.h
+        Drivers/Oled_ssd1306/oled_ssd1306.c
+        Drivers/Oled_ssd1306/oled_ssd1306.h)
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
@@ -50,12 +52,14 @@ file(GLOB U8G2_SOURCES
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
+        Drivers/Oled_ssd1306/oled_ssd1306.c
         Drivers/RotaryEncoder/rotary_encoder.c
         ${U8G2_SOURCES}
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
+        Drivers/Oled_ssd1306
         Drivers/RotaryEncoder
         Drivers/u8g2/csrc
 )
