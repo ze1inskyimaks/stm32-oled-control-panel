@@ -21,9 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "oled_ssd1306.h"
-#include "u8g2.h"
 #include "rotary_encoder.h"
+#include "ssd1306.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,7 +45,6 @@ I2C_HandleTypeDef hi2c1;
 
 /* USER CODE BEGIN PV */
 RotaryEncoder_TypeDef rotary_encoder;
-u8g2_t u8g2;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -54,7 +52,17 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
-
+void drawCircle(void)
+{
+  for (int16_t i = 0; i < ssd1306_GetHeight(); i += 2)
+  {
+    ssd1306_DrawCircle(ssd1306_GetWidth() / 2, ssd1306_GetHeight() / 2, i);
+    ssd1306_UpdateScreen();
+    HAL_Delay(10);
+  }
+  HAL_Delay(1000);
+  ssd1306_Clear();
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -93,7 +101,11 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-  oled_Ssd1306_Init(&u8g2);
+
+  ssd1306_Init();
+  ssd1306_FlipScreenVertically();
+  ssd1306_Clear();
+  ssd1306_SetColor(White);
 
   RotaryEncoder_Init(
     &rotary_encoder,
@@ -105,13 +117,6 @@ int main(void)
     Encoder_SW_pin_Pin
     );
 
-  u8g2_ClearBuffer(&u8g2);
-
-  u8g2_SetFont(&u8g2, u8g2_font_ncenB14_tr);
-  u8g2_DrawStr(&u8g2, 0, 15, "HELLO");
-  u8g2_DrawCircle(&u8g2, 60, 30, 10, U8G2_DRAW_ALL);
-
-  u8g2_SendBuffer(&u8g2);
 
   /* USER CODE END 2 */
 
@@ -131,6 +136,9 @@ int main(void)
       HAL_Delay(2000);
       HAL_GPIO_WritePin(Led_GPIO_Port, Led_Pin, GPIO_PIN_RESET);
     }
+    drawCircle();
+    ssd1306_Clear();
+    HAL_Delay(1000);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
