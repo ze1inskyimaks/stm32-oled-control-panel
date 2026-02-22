@@ -14,7 +14,7 @@ typedef struct {
     uint16_t DT_pin;
     GPIO_TypeDef* SW_port;
     uint16_t SW_pin;
-    volatile int32_t position;
+    volatile int position;
 } RotaryEncoder_TypeDef;
 
 void RotaryEncoder_Init(

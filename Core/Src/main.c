@@ -18,9 +18,12 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
+
 #include "rotary_encoder.h"
 #include "ssd1306.h"
 /* USER CODE END Includes */
@@ -32,7 +35,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define UPDATE_DISPLAY_MASK 1 << 0 //0x01
+#define ENCODER_MOVED_MASK 1 << 1 //0x02
+#define BUTTON_PRESSED_MASK 1 << 2 //0x04
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -43,6 +48,25 @@
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
 
+/* Definitions for inputTask */
+osThreadId_t inputTaskHandle;
+const osThreadAttr_t inputTask_attributes = {
+  .name = "inputTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityHigh,
+};
+/* Definitions for uiTask */
+osThreadId_t uiTaskHandle;
+const osThreadAttr_t uiTask_attributes = {
+  .name = "uiTask",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for systemEventsHandle */
+osEventFlagsId_t systemEventsHandleHandle;
+const osEventFlagsAttr_t systemEventsHandle_attributes = {
+  .name = "systemEventsHandle"
+};
 /* USER CODE BEGIN PV */
 RotaryEncoder_TypeDef rotary_encoder;
 /* USER CODE END PV */
@@ -51,6 +75,9 @@ RotaryEncoder_TypeDef rotary_encoder;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
+void StartInputTask(void *argument);
+void StartUiTask(void *argument);
+
 /* USER CODE BEGIN PFP */
 void drawCircle(void)
 {
@@ -120,25 +147,55 @@ int main(void)
 
   /* USER CODE END 2 */
 
+  /* Init scheduler */
+  osKernelInitialize();
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* creation of inputTask */
+  inputTaskHandle = osThreadNew(StartInputTask, NULL, &inputTask_attributes);
+
+  /* creation of uiTask */
+  uiTaskHandle = osThreadNew(StartUiTask, NULL, &uiTask_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+  /* Create the event(s) */
+  /* creation of systemEventsHandle */
+  systemEventsHandleHandle = osEventFlagsNew(&systemEventsHandle_attributes);
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
+
+  /* Start scheduler */
+  osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
+
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
     /* USER CODE END WHILE */
-    //HAL_GPIO_ReadPin(Encoder_SW_pin_GPIO_Port, Encoder_SW_pin_Pin) == GPIO_PIN_RESET
-    if (rotary_encoder.position > 0) {
-      HAL_GPIO_WritePin(Led_GPIO_Port, Led_Pin, GPIO_PIN_SET);
-      HAL_Delay(50);
-      HAL_GPIO_WritePin(Led_GPIO_Port, Led_Pin, GPIO_PIN_RESET);
-    }
-    if (RotaryEncoder_ButtonPressed(&rotary_encoder)) {
-      HAL_GPIO_WritePin(Led_GPIO_Port, Led_Pin, GPIO_PIN_SET);
-      HAL_Delay(2000);
-      HAL_GPIO_WritePin(Led_GPIO_Port, Led_Pin, GPIO_PIN_RESET);
-    }
-    drawCircle();
-    ssd1306_Clear();
-    HAL_Delay(1000);
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -253,7 +310,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(Led_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI1_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
@@ -265,9 +322,86 @@ static void MX_GPIO_Init(void)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   if (GPIO_Pin == Encoder_CLK_pin_Pin) {
     RotaryEncoder_Exti_CallBack(&rotary_encoder);
+    osEventFlagsSet(systemEventsHandleHandle, ENCODER_MOVED_MASK);
   }
 }
 /* USER CODE END 4 */
+
+/* USER CODE BEGIN Header_StartInputTask */
+/**
+  * @brief  Function implementing the inputTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartInputTask */
+void StartInputTask(void *argument)
+{
+  /* USER CODE BEGIN 5 */
+  /* Infinite loop */
+  for(;;)
+  {
+    if (RotaryEncoder_ButtonPressed(&rotary_encoder)) {
+      osEventFlagsSet(systemEventsHandleHandle, BUTTON_PRESSED_MASK);
+    }
+
+    osDelay(1);
+  }
+  /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_StartUiTask */
+/**
+* @brief Function implementing the uiTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartUiTask */
+void StartUiTask(void *argument)
+{
+  /* USER CODE BEGIN StartUiTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    static char buffer[30];
+    uint32_t flags = osEventFlagsWait(systemEventsHandleHandle,BUTTON_PRESSED_MASK | ENCODER_MOVED_MASK, osFlagsWaitAny, osWaitForever);
+
+    ssd1306_Clear();
+    if (flags & ENCODER_MOVED_MASK) {
+      ssd1306_SetCursor(0, 0);
+      sprintf(buffer, "Encoder pos: %d", rotary_encoder.position);
+      ssd1306_WriteString(buffer, Font_7x10);
+      ssd1306_UpdateScreen();
+    }
+    if (flags & BUTTON_PRESSED_MASK) {
+      ssd1306_SetCursor(0, 16);
+      ssd1306_WriteString("Button pressed!", Font_7x10);
+      ssd1306_UpdateScreen();
+    }
+  }
+  /* USER CODE END StartUiTask */
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM1 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM1)
+  {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.
