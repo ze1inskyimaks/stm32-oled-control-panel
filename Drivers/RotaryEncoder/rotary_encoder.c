@@ -32,6 +32,6 @@ void RotaryEncoder_Exti_CallBack(RotaryEncoder_TypeDef *rotary_encoder) {
     }
 }
 
-bool RotaryEncoder_ButtonPressed(RotaryEncoder_TypeDef *rotary_encoder) {
+uint8_t RotaryEncoder_ButtonPressed(RotaryEncoder_TypeDef *rotary_encoder) {
     return HAL_GPIO_ReadPin(rotary_encoder->SW_port, rotary_encoder->SW_pin) == GPIO_PIN_RESET;
 }

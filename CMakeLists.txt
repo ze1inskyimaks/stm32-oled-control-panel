@@ -35,6 +35,8 @@ enable_language(C ASM)
 add_executable(${CMAKE_PROJECT_NAME}
         Drivers/RotaryEncoder/rotary_encoder.c
         Drivers/RotaryEncoder/rotary_encoder.h
+        Core/Inc/system_menu.h
+        Core/Src/system_menu.c
 )
 
 # Add STM32CubeMX generated sources

@@ -26,6 +26,7 @@
 
 #include "rotary_encoder.h"
 #include "ssd1306.h"
+#include "system_menu.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -68,7 +69,8 @@ const osEventFlagsAttr_t systemEventsHandle_attributes = {
   .name = "systemEventsHandle"
 };
 /* USER CODE BEGIN PV */
-RotaryEncoder_TypeDef rotary_encoder;
+RotaryEncoder_TypeDef rotaryEncoder;
+FontDef systemLanguage;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -133,9 +135,10 @@ int main(void)
   ssd1306_FlipScreenVertically();
   ssd1306_Clear();
   ssd1306_SetColor(White);
+  systemLanguage = Font_7x10;
 
   RotaryEncoder_Init(
-    &rotary_encoder,
+    &rotaryEncoder,
     Encoder_CLK_pin_GPIO_Port,
     Encoder_CLK_pin_Pin,
     Encoder_DT_pin_GPIO_Port,
@@ -144,6 +147,9 @@ int main(void)
     Encoder_SW_pin_Pin
     );
 
+  menu_init(&rotaryEncoder);
+  page_Render(0);
+  ssd1306_UpdateScreen();
 
   /* USER CODE END 2 */
 
@@ -321,7 +327,7 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   if (GPIO_Pin == Encoder_CLK_pin_Pin) {
-    RotaryEncoder_Exti_CallBack(&rotary_encoder);
+    RotaryEncoder_Exti_CallBack(&rotaryEncoder);
     osEventFlagsSet(systemEventsHandleHandle, ENCODER_MOVED_MASK);
   }
 }
@@ -340,7 +346,7 @@ void StartInputTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    if (RotaryEncoder_ButtonPressed(&rotary_encoder)) {
+    if (RotaryEncoder_ButtonPressed(&rotaryEncoder)) {
       osEventFlagsSet(systemEventsHandleHandle, BUTTON_PRESSED_MASK);
     }
 
@@ -364,19 +370,29 @@ void StartUiTask(void *argument)
   {
     static char buffer[30];
     uint32_t flags = osEventFlagsWait(systemEventsHandleHandle,BUTTON_PRESSED_MASK | ENCODER_MOVED_MASK, osFlagsWaitAny, osWaitForever);
-
     ssd1306_Clear();
+
+    change_position();
+
     if (flags & ENCODER_MOVED_MASK) {
       ssd1306_SetCursor(0, 0);
-      sprintf(buffer, "Encoder pos: %d", rotary_encoder.position);
+      sprintf(buffer, "Encoder pos: %d", rotaryEncoder.position);
+      ssd1306_WriteString(buffer, Font_7x10);
+    }
+
+    ssd1306_UpdateScreen();
+    /*
+    if (flags & ENCODER_MOVED_MASK) {
+      ssd1306_SetCursor(0, 0);
+      sprintf(buffer, "Encoder pos: %d", rotaryEncoder.position);
       ssd1306_WriteString(buffer, Font_7x10);
       ssd1306_UpdateScreen();
     }
     if (flags & BUTTON_PRESSED_MASK) {
       ssd1306_SetCursor(0, 16);
-      ssd1306_WriteString("Button pressed!", Font_7x10);
+      ssd1306_WriteString("Button pressed!", systemLanguage);
       ssd1306_UpdateScreen();
-    }
+    }*/
   }
   /* USER CODE END StartUiTask */
 }

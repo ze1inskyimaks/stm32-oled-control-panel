@@ -27,6 +27,6 @@ void RotaryEncoder_Init(
     uint16_t SW_pin
     );
 void RotaryEncoder_Exti_CallBack(RotaryEncoder_TypeDef *rotary_encoder);
-bool RotaryEncoder_ButtonPressed(RotaryEncoder_TypeDef *rotary_encoder);
+uint8_t RotaryEncoder_ButtonPressed(RotaryEncoder_TypeDef *rotary_encoder);
 
 #endif //TEST_STM32F103_ROTARY_ENCODER_H
