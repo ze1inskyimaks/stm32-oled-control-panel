@@ -22,30 +22,41 @@ void menu_init(RotaryEncoder_TypeDef* rotary_encoder) {
     rotaryEncoder = rotary_encoder;
 }
 
-void page_Render(uint8_t page_index) {
-    MenuPage_t *page = &mainMenu.pages[page_index];
-    for (uint8_t i = 0; i < page->item_count; i++) {
-        uint8_t selected_index= 0;
-        if (rotaryEncoder->position == i) {
-            selected_index = 1;
+void menu_page_Render() {
+    MenuPage_t page = mainMenu.pages[mainMenu.page_selected];
+    for (uint8_t i = 0; i < page.item_count; i++) {
+        uint8_t selected_flag = 0;
+        if ((int)rotaryEncoder->position == i) {
+            selected_flag = 1;
         }
-        MenuItem_t *item = &page->items[i];
-        mainMenu.pages[page_index].items[i].item_draw(item->context, selected_index);
+        MenuItem_t item = page.items[i];
+        mainMenu.pages[mainMenu.page_selected].items[i].item_draw(item.context, selected_flag);
     }
 }
 
-void change_position() {
-    int32_t pos = rotaryEncoder->position;
+void menu_press_button() {
+    MenuPage_t page = mainMenu.pages[mainMenu.page_selected];
+    uint8_t pos = (uint8_t)rotaryEncoder->position;
+
+    if (page.items[pos].item_function != NULL) {
+        page.items[pos].item_function();
+    }
+
+    menu_page_Render();
+}
+
+void menu_change_position() {
+    float pos = rotaryEncoder->position;
 
     if (pos < 0)
         pos = 0;
 
-    if (pos >= mainMenu.pages[0].item_count)
-        pos = mainMenu.pages[0].item_count - 1;
+    if (pos >= (float)mainMenu.pages[0].item_count)
+        pos = (float)mainMenu.pages[0].item_count - 1;
 
     rotaryEncoder->position = pos;
 
-    page_Render(0);
+    menu_page_Render();
 }
 
 static CircleProgress_t circle1 =
@@ -58,17 +69,18 @@ static MenuItem_t mainMenuItems[] =
 {
     {
         .item_draw = DrawLeftArrow,
+        .item_function = NULL,
         .context = NULL,
         .item_index = 0
     },
     {
-        .item_draw = DrawRightArrow,
-        .context = NULL,
+        .item_draw = DrawCircleProgress,
+        .context = &circle1,
         .item_index = 1
     },
     {
-        .item_draw = DrawCircleProgress,
-        .context = &circle1,
+        .item_draw = DrawRightArrow,
+        .context = NULL,
         .item_index = 2
     }
 };
@@ -85,7 +97,8 @@ static MenuPage_t mainMenuPages[] =
 static Menu_t mainMenu =
 {
     .pages = mainMenuPages,
-    .page_count = sizeof(mainMenuPages) / sizeof(mainMenuPages[0])
+    .page_count = sizeof(mainMenuPages) / sizeof(mainMenuPages[0]),
+    .page_selected = 0
 };
 
 /*void MainPage() {

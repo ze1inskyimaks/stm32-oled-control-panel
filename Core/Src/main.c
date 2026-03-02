@@ -148,7 +148,7 @@ int main(void)
     );
 
   menu_init(&rotaryEncoder);
-  page_Render(0);
+  menu_page_Render();
   ssd1306_UpdateScreen();
 
   /* USER CODE END 2 */
@@ -372,27 +372,26 @@ void StartUiTask(void *argument)
     uint32_t flags = osEventFlagsWait(systemEventsHandleHandle,BUTTON_PRESSED_MASK | ENCODER_MOVED_MASK, osFlagsWaitAny, osWaitForever);
     ssd1306_Clear();
 
-    change_position();
-
     if (flags & ENCODER_MOVED_MASK) {
+      menu_change_position();
+
       ssd1306_SetCursor(0, 0);
-      sprintf(buffer, "Encoder pos: %d", rotaryEncoder.position);
-      ssd1306_WriteString(buffer, Font_7x10);
+      int pos_int = (int)(rotaryEncoder.position * 100);
+      sprintf(buffer, "Encoder pos: %d.%02d",
+        pos_int / 100,
+        abs(pos_int % 100));
+      //sprintf(buffer, "Encoder pos: %f", rotaryEncoder.position);
+      ssd1306_WriteString(buffer, systemLanguage);
+    }
+
+    if (flags & BUTTON_PRESSED_MASK) {
+      menu_press_button();
+
+      ssd1306_SetCursor(0, 0);
+      ssd1306_WriteString("Button pressed!", systemLanguage);
     }
 
     ssd1306_UpdateScreen();
-    /*
-    if (flags & ENCODER_MOVED_MASK) {
-      ssd1306_SetCursor(0, 0);
-      sprintf(buffer, "Encoder pos: %d", rotaryEncoder.position);
-      ssd1306_WriteString(buffer, Font_7x10);
-      ssd1306_UpdateScreen();
-    }
-    if (flags & BUTTON_PRESSED_MASK) {
-      ssd1306_SetCursor(0, 16);
-      ssd1306_WriteString("Button pressed!", systemLanguage);
-      ssd1306_UpdateScreen();
-    }*/
   }
   /* USER CODE END StartUiTask */
 }

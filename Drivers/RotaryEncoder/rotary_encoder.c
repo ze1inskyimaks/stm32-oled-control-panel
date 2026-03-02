@@ -25,10 +25,10 @@ void RotaryEncoder_Init(
 void RotaryEncoder_Exti_CallBack(RotaryEncoder_TypeDef *rotary_encoder) {
     if (HAL_GPIO_ReadPin(rotary_encoder->CLK_port , rotary_encoder->CLK_pin) !=
         HAL_GPIO_ReadPin(rotary_encoder->DT_port , rotary_encoder->DT_pin)) {
-        rotary_encoder->position++;
+        rotary_encoder->position += (float)0.1;
     }
     else {
-        rotary_encoder->position--;
+        rotary_encoder->position -= (float)0.1;
     }
 }
 
